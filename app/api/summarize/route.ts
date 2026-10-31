@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
       : "neutral";
 
     // 5. Invoke Gemini API with optional file attachment
-    const { summary, modelUsed, fromCache } = await summarizeTextWithGemini(
+    const { summary, suggestedQuestions, modelUsed, fromCache } = await summarizeTextWithGemini(
       trimmedText,
       safeType,
       safeLength,
@@ -138,6 +138,7 @@ export async function POST(request: NextRequest) {
         tone: safeTone,
         generatedAt: new Date().toISOString(),
       },
+      suggestedQuestions,
     };
 
     return NextResponse.json(responsePayload, {

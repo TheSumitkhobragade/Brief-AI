@@ -81,7 +81,7 @@ export const TextInputArea: React.FC<TextInputAreaProps> = ({
                   className="fixed inset-0 z-20"
                   onClick={() => setShowSamplesDropdown(false)}
                 />
-                <div className="absolute right-0 top-full z-30 mt-1.5 w-72 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-slate-700 dark:bg-slate-800 animate-fade-in">
+                <div className="absolute left-0 sm:left-auto sm:right-0 top-full z-30 mt-1.5 w-[calc(100vw-3.5rem)] max-w-[290px] sm:w-72 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-slate-700 dark:bg-slate-800 animate-fade-in">
                   <div className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
                     Select a Sample Document
                   </div>

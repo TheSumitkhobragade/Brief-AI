@@ -119,13 +119,21 @@ ${toneGuide}
 
 ${sourceSection}
 
+IN ADDITION TO THE SUMMARY:
+At the very end of your response, provide exactly 4 relevant, document-specific follow-up questions that a reader of this specific document would ask (referencing particular entities, schedules, numbers, policies, or key points mentioned in the text). Format the questions section strictly as:
+--- SUGGESTED QUESTIONS ---
+* [Specific question 1?]
+* [Specific question 2?]
+* [Specific question 3?]
+* [Specific question 4?]
+
 SUMMARY:`;
 
   return { prompt, systemInstruction };
 }
 
 // High-performance in-memory cache for instant replay of identical summaries
-const summaryCache = new Map<string, { summary: string; modelUsed: string; timestamp: number }>();
+const summaryCache = new Map<string, { summary: string; suggestedQuestions: string[]; modelUsed: string; timestamp: number }>();
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 function getCacheKey(text: string, type: string, length: string, tone: string, fileName?: string): string {
@@ -135,7 +143,7 @@ function getCacheKey(text: string, type: string, length: string, tone: string, f
 
 /**
  * Summarizes text using the Google Gen AI SDK with support for text and multimedia documents.
- * Optimized for low latency, token-bounded execution, and instant caching.
+ * Optimized for low latency, token-bounded execution, dynamic question generation, and instant caching.
  */
 export async function summarizeTextWithGemini(
   text: string,
@@ -143,13 +151,14 @@ export async function summarizeTextWithGemini(
   length: SummaryLength,
   tone: SummaryTone = "neutral",
   file?: UploadedFilePayload
-): Promise<{ summary: string; modelUsed: string; fromCache?: boolean }> {
+): Promise<{ summary: string; suggestedQuestions: string[]; modelUsed: string; fromCache?: boolean }> {
   // Check memory cache first (instant response for repeat queries or sample documents)
   const cacheKey = getCacheKey(text, type, length, tone, file?.name);
   const cached = summaryCache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
     return {
       summary: cached.summary,
+      suggestedQuestions: cached.suggestedQuestions,
       modelUsed: cached.modelUsed,
       fromCache: true,
     };
@@ -167,10 +176,10 @@ export async function summarizeTextWithGemini(
     "gemini-2.0-flash",
   ].filter(Boolean) as string[];
 
-  // Token bounding optimization: capping output tokens drastically decreases latency
-  let maxOutputTokens = 850;
-  if (length === "short") maxOutputTokens = 420;
-  else if (length === "long") maxOutputTokens = 1700;
+  // Token bounding optimization with headroom for the 4 follow-up questions
+  let maxOutputTokens = 950;
+  if (length === "short") maxOutputTokens = 550;
+  else if (length === "long") maxOutputTokens = 1900;
 
   // Construct payload with optional inline document/image part
   const contents: any[] = [];
@@ -193,19 +202,40 @@ export async function summarizeTextWithGemini(
         contents,
         config: {
           systemInstruction,
-          temperature: 0.15, // Low entropy for rapid deterministic decoding
-          maxOutputTokens, // Eliminates trailing token generation lag
+          temperature: 0.2,
+          maxOutputTokens,
           topP: 0.85,
           topK: 25,
         },
       });
 
-      const summary = response.text?.trim() || "";
+      const rawText = response.text?.trim() || "";
 
-      if (summary) {
+      if (rawText) {
+        // Extract summary and document-specific follow-up questions
+        const parts = rawText.split(/---\s*SUGGESTED QUESTIONS\s*---/i);
+        const cleanSummary = parts[0].trim();
+        const rawQuestions = parts[1] || "";
+        const extractedQuestions = rawQuestions
+          .split("\n")
+          .map((line) => line.replace(/^(\*|-|\d+\.)\s*/, "").trim())
+          .filter((q) => q.length > 5 && q.endsWith("?"))
+          .slice(0, 4);
+
+        const finalQuestions =
+          extractedQuestions.length > 0
+            ? extractedQuestions
+            : [
+                "What are the main findings or decisions in this document?",
+                "Can you outline any dates, numbers, or deadlines mentioned?",
+                "What are the direct implications of this announcement?",
+                "Are there any requirements, conditions, or exceptions noted?",
+              ];
+
         // Store in cache for instantaneous replay
         summaryCache.set(cacheKey, {
-          summary,
+          summary: cleanSummary,
+          suggestedQuestions: finalQuestions,
           modelUsed: model,
           timestamp: Date.now(),
         });
@@ -217,7 +247,8 @@ export async function summarizeTextWithGemini(
         }
 
         return {
-          summary,
+          summary: cleanSummary,
+          suggestedQuestions: finalQuestions,
           modelUsed: model,
         };
       }

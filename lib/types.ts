@@ -41,6 +41,7 @@ export interface SummarizeResponse {
   summary: string;
   stats: SummaryStats;
   meta: SummaryMeta;
+  suggestedQuestions?: string[];
 }
 
 export interface HistoryItem {
@@ -49,5 +50,6 @@ export interface HistoryItem {
   summary: string;
   stats: SummaryStats;
   meta: SummaryMeta;
+  suggestedQuestions?: string[];
   timestamp: number;
 }

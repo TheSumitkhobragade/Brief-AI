@@ -332,7 +332,7 @@ export const SummaryOutput: React.FC<SummaryOutputProps> = ({
                     className="fixed inset-0 z-30"
                     onClick={() => setShowExportMenu(false)}
                   />
-                  <div className="absolute right-0 top-full z-40 mt-1.5 w-52 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-slate-700 dark:bg-slate-800 animate-fade-in">
+                  <div className="absolute right-0 top-full z-40 mt-1.5 w-52 max-w-[calc(100vw-3rem)] rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-slate-700 dark:bg-slate-800 animate-fade-in">
                     <div className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
                       Export Summary As
                     </div>
@@ -406,10 +406,11 @@ export const SummaryOutput: React.FC<SummaryOutputProps> = ({
         </div>
       </div>
 
-      {/* Interactive Document Q&A Follow-up Section */}
+      {/* Interactive Document Q&A Follow-up Section with Dynamic Questions */}
       <DocumentChat
         documentText={sourceDocumentText || data.summary}
         file={attachedFile}
+        suggestedQuestions={data.suggestedQuestions}
       />
     </div>
   );

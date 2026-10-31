@@ -81,6 +81,7 @@ export default function Home() {
       summary: item.summary,
       stats: item.stats,
       meta: item.meta,
+      suggestedQuestions: item.suggestedQuestions,
     });
     setSummaryType(item.meta.type);
     setSummaryLength(item.meta.length);
@@ -173,6 +174,7 @@ export default function Home() {
         summary: data.summary,
         stats: data.stats,
         meta: data.meta,
+        suggestedQuestions: data.suggestedQuestions,
         timestamp: Date.now(),
       };
       saveToHistory(historyRecord);
