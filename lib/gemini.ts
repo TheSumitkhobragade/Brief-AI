@@ -167,13 +167,25 @@ export async function summarizeTextWithGemini(
   const ai = getGeminiClient();
   const { prompt, systemInstruction } = buildPrompt(text, type, length, tone, file?.name);
 
-  // Model selection: prioritize high-speed flash-lite for sub-second TTFT
-  const candidateModels = [
-    process.env.GEMINI_MODEL?.trim(),
-    "gemini-3.5-flash-lite",
-    "gemini-3.5-flash",
-    "gemini-3.1-pro-preview",
+  // Models permanently decommissioned by Google that throw 404
+  const DEPRECATED_MODELS = new Set([
     "gemini-2.0-flash",
+    "gemini-2.0-flash-exp",
+    "gemini-2.0-flash-001",
+    "gemini-1.5-flash",
+    "gemini-1.5-pro",
+    "gemini-2.5-flash",
+    "gemini-2.5-pro",
+    "gemini-2.5-flash-lite",
+  ]);
+
+  // Model selection: prioritize high-speed, operational flash-lite and 3.8-flash
+  const envModel = process.env.GEMINI_MODEL?.trim();
+  const candidateModels = [
+    envModel && !DEPRECATED_MODELS.has(envModel) ? envModel : null,
+    "gemini-3.5-flash-lite",
+    "gemini-3.8-flash",
+    "gemini-3.5-flash",
   ].filter(Boolean) as string[];
 
   // Token bounding optimization with headroom for the 4 follow-up questions

@@ -151,14 +151,24 @@ export async function POST(request: NextRequest) {
   } catch (error: unknown) {
     console.error("Summarization API error:", error);
 
-    const errorMessage =
+    let errorMessage =
       error instanceof Error ? error.message : "An unexpected server error occurred.";
 
-    // Detect specific Gemini API errors (e.g. quota, bad key)
+    // Unpack Google API JSON error if returned as a serialized string
+    try {
+      const parsed = JSON.parse(errorMessage);
+      if (parsed?.error?.message) {
+        errorMessage = parsed.error.message;
+      }
+    } catch {
+      // Keep original errorMessage if not JSON
+    }
+
+    // Detect specific Gemini API errors (e.g. quota, bad key, unavailable)
     if (errorMessage.toLowerCase().includes("api key not valid")) {
       return NextResponse.json(
         {
-          error: "Your GEMINI_API_KEY is invalid. Please double-check your key in .env.local",
+          error: "Your GEMINI_API_KEY is invalid. Please double-check your key in .env.local or Vercel dashboard.",
           code: "INVALID_API_KEY",
         },
         { status: 401 }
@@ -172,6 +182,16 @@ export async function POST(request: NextRequest) {
           code: "RATE_LIMIT_EXCEEDED",
         },
         { status: 429 }
+      );
+    }
+
+    if (errorMessage.toLowerCase().includes("high demand") || errorMessage.includes("503")) {
+      return NextResponse.json(
+        {
+          error: "Gemini AI models are temporarily experiencing high demand. Please try again in a few seconds.",
+          code: "MODEL_HIGH_DEMAND",
+        },
+        { status: 503 }
       );
     }
 

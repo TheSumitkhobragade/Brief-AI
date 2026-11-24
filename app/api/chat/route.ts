@@ -75,12 +75,24 @@ ANSWER:`;
     }
     contents.push(promptText);
 
-    const candidateModels = [
-      process.env.GEMINI_MODEL?.trim(),
-      "gemini-3.5-flash",
-      "gemini-3.5-flash-lite",
-      "gemini-3.1-pro-preview",
+    // Models permanently decommissioned by Google that throw 404
+    const DEPRECATED_MODELS = new Set([
       "gemini-2.0-flash",
+      "gemini-2.0-flash-exp",
+      "gemini-2.0-flash-001",
+      "gemini-1.5-flash",
+      "gemini-1.5-pro",
+      "gemini-2.5-flash",
+      "gemini-2.5-pro",
+      "gemini-2.5-flash-lite",
+    ]);
+
+    const envModel = process.env.GEMINI_MODEL?.trim();
+    const candidateModels = [
+      envModel && !DEPRECATED_MODELS.has(envModel) ? envModel : null,
+      "gemini-3.5-flash-lite",
+      "gemini-3.8-flash",
+      "gemini-3.5-flash",
     ].filter(Boolean) as string[];
 
     let lastError: unknown = null;
@@ -112,7 +124,18 @@ ANSWER:`;
     throw lastError || new Error("Failed to get an answer from Gemini models.");
   } catch (error: unknown) {
     console.error("Chat API error:", error);
-    const message = error instanceof Error ? error.message : "Internal chat error.";
+    let message = error instanceof Error ? error.message : "Internal chat error.";
+    try {
+      const parsed = JSON.parse(message);
+      if (parsed?.error?.message) {
+        message = parsed.error.message;
+      }
+    } catch {
+      // Keep original message if not JSON
+    }
+    if (message.toLowerCase().includes("high demand") || message.includes("503")) {
+      message = "Gemini AI models are temporarily experiencing high demand. Please try again in a moment.";
+    }
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
